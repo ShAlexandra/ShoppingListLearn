@@ -4,14 +4,13 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
 import com.example.shoppinglist.data.ShopListRepositoryImpl
 import com.example.shoppinglist.domain.AddShopItemUseCase
 import com.example.shoppinglist.domain.EditShopItemUseCase
 import com.example.shoppinglist.domain.GetShopItemUseCase
 import com.example.shoppinglist.domain.ShopItem
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 class ShopItemViewModel(application: Application) : AndroidViewModel(application) {
@@ -21,8 +20,6 @@ class ShopItemViewModel(application: Application) : AndroidViewModel(application
     private val addShopItemUseCase = AddShopItemUseCase(repository)
     private val editShopItemUseCase = EditShopItemUseCase(repository)
     private val getShopItemUseCase = GetShopItemUseCase(repository)
-
-    private val scope = CoroutineScope(Dispatchers.IO)
 
     private val _errorInputName = MutableLiveData<Boolean>()
     val errorInputName: LiveData<Boolean>
@@ -45,7 +42,7 @@ class ShopItemViewModel(application: Application) : AndroidViewModel(application
         val name = parseName(inputName)
         val count = parseCount(inputCount)
         if (validateInput(name, count)) {
-            scope.launch(Dispatchers.IO) {
+            viewModelScope.launch(Dispatchers.IO) {
                 val shopItem = ShopItem(name, count, true)
                 addShopItemUseCase.addShopItem(shopItem)
                 finishWork()
@@ -58,7 +55,7 @@ class ShopItemViewModel(application: Application) : AndroidViewModel(application
         val count = parseCount(inputCount)
         if (validateInput(name, count)) {
             _shopItem.value?.let {
-                scope.launch(Dispatchers.IO) {
+                viewModelScope.launch(Dispatchers.IO) {
                     val item = it.copy(name = name, count = count)
                     editShopItemUseCase.editShopItem(item)
                     finishWork()
@@ -68,8 +65,8 @@ class ShopItemViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun getShopItem(shopItemId: Int) {
-        scope.launch(Dispatchers.IO) {
-            _shopItem.postValue(getShopItemUseCase.getShopItem(shopItemId))
+        viewModelScope.launch(Dispatchers.IO) {
+            _shopItem.value = getShopItemUseCase.getShopItem(shopItemId)
         }
     }
 
@@ -107,10 +104,5 @@ class ShopItemViewModel(application: Application) : AndroidViewModel(application
 
     fun resetErrorInputCount() {
         _errorInputCount.value = false
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        scope.cancel()
     }
 }
